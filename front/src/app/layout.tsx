@@ -9,6 +9,8 @@ const Sidebar = dynamic(() => import("@/app/_components/layout/sidebar"), {
   loading: () => <div className="h-64 bg-muted animate-pulse rounded-xl" />,
 });
 
+import Header from "@/components/ui/header";
+
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
@@ -32,9 +34,10 @@ export default function RootLayout({
         suppressHydrationWarning={true}
       >
         <Sidebar />
-        <main className="flex-1 overflow-y-auto bg-background p-6 lg:p-4">
-          {children}
-        </main>
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <Header />
+          <main className="flex-1 overflow-y-auto bg-background p-6 lg:p-4">{children}</main>
+        </div>
       </body>
     </html>
   );

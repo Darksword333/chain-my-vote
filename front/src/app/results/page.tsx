@@ -1,4 +1,5 @@
 import Link from "next/link";
+import WalletStatus from "@/components/ui/wallet-status";
 
 export default function ResultsPage() {
   // Placeholder results — replace with on-chain queries as needed
@@ -8,7 +9,10 @@ export default function ResultsPage() {
 
   return (
     <div className="max-w-6xl mx-auto p-8">
-      <h1 className="text-3xl font-bold mb-4">Results</h1>
+      <div className="mb-6">
+        <h1 className="text-3xl font-bold">Results</h1>
+      </div>
+
       <div className="space-y-4">
         {sampleResults.map((r) => (
           <div key={r.id} className="border rounded p-4">

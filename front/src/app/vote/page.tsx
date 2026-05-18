@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useWallet } from "@/hooks/useWallet";
+import WalletStatus from "@/components/ui/wallet-status";
 import { Button } from "@/components/ui/button";
 
 export default function VotePage() {
@@ -35,15 +36,8 @@ export default function VotePage() {
 
   return (
     <div className="max-w-6xl mx-auto p-8">
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-6">
         <h1 className="text-3xl font-bold">Vote</h1>
-        <div>
-          {address ? (
-            <div className="text-sm">Connected: {address}</div>
-          ) : (
-            <Button onClick={() => connect()}>Connect MetaMask</Button>
-          )}
-        </div>
       </div>
 
       {loading ? (

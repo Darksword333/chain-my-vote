@@ -30,10 +30,30 @@ export function useWallet() {
   }, []);
 
   const disconnect = useCallback(() => {
+    // Try to politely request permission revocation (not all wallets support this).
+    try {
+      const eth = (window as any).ethereum;
+      if (eth?.request) {
+        eth.request?.({ method: "wallet_requestPermissions", params: [{ eth_accounts: {} }] }).catch(() => {});
+      }
+    } catch (e) {
+      // ignore
+    }
+
     setProvider(null);
     setSigner(null);
     setAddress(null);
     setContract(null);
+
+    try {
+      // Clear any stored flags we might have used
+      localStorage.removeItem("connected_wallet_address");
+    } catch (e) {}
+
+    // Reload the page so the dApp fully resets its state (MetaMask still controls connection at extension level).
+    try {
+      window.location.reload();
+    } catch (e) {}
   }, []);
 
   useEffect(() => {

@@ -1,23 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import WalletStatus from "@/components/ui/wallet-status";
 import { Button } from "@/components/ui/button";
 import { Wallet, CheckSquare, ShieldCheck, Activity, Zap } from "lucide-react";
+import { useWallet } from "@/hooks/useWallet";
 
 export default function Home() {
-  // States
-  const [isConnected, setIsConnected] = useState(false);
-  const [walletAddress, setWalletAddress] = useState("");
   const router = useRouter();
-
-  // Fonction factice pour l'interface (à remplacer par la vraie logique ethers/web3.js)
-  const handleConnect = () => {
-    setIsConnected(true);
-    setWalletAddress("0x71C...976F");
-  };
+  const { address, connect } = useWallet();
+  const isConnected = Boolean(address);
 
   return (
     <div className="max-w-6xl mx-auto space-y-4 h-full flex flex-col p-8">
@@ -30,19 +25,6 @@ export default function Home() {
             Elections
           </p>
         </div>
-        
-        {/* MetaMask connect */}
-        {!isConnected ? (
-          <Button onClick={handleConnect} className="gap-2">
-            <Wallet className="size-4" />
-            Connect MetaMask
-          </Button>
-        ) : (
-          <Badge variant="outline" className="px-4 py-2 text-sm gap-2 bg-emerald-500/10 text-emerald-500 border-emerald-500/20">
-            <div className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-            Logged in : {walletAddress}
-          </Badge>
-        )}
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
@@ -112,9 +94,7 @@ export default function Home() {
             <p className="text-muted-foreground mb-6 max-w-md">
               To ensure the secrecy of your vote and prevent double voting, please link your crypto wallet.
             </p>
-            <Button onClick={handleConnect} variant="outline">
-              Connect my Wallet
-            </Button>
+            <WalletStatus />
           </>
         ) : (
           <>
