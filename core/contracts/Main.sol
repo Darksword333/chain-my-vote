@@ -17,6 +17,7 @@ contract Main {
     }
 
     Choice[] public choices;
+    uint public totalVotes;
 
     // Map adress to voter struct
     mapping(address => Voter) public voters;
@@ -59,6 +60,7 @@ contract Main {
 
         // Increment the counter
         choices[choiceIndex].count++;
+        totalVotes++;
     }
 
     // Winner
@@ -70,5 +72,17 @@ contract Main {
                 winnerName_ = choices[p].name;
             }
         }
+    }
+
+    function getAllResults() public view returns (bytes32[] memory, uint[] memory) {
+        bytes32[] memory names = new bytes32[](choices.length);
+        uint[] memory counts = new uint[](choices.length);
+        
+        for (uint i = 0; i < choices.length; i++) {
+            names[i] = choices[i].name;
+            counts[i] = choices[i].count;
+        }
+        
+        return (names, counts);
     }
 }
