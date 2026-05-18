@@ -12,7 +12,7 @@ import { useWallet } from "@/hooks/useWallet";
 import WalletStatus from "@/components/ui/wallet-status";
 
 export default function OrganizePage() {
-  const { address, connect } = useWallet();
+  const { address, connect, signer } = useWallet();
   const { deployBallot } = useDeployer();
 
   const [title, setTitle] = useState("");
@@ -27,9 +27,13 @@ export default function OrganizePage() {
   const handleDeploy = async () => {
     if (!title || options.length < 2) return alert("Provide a title and at least two options.");
     try {
-      if (!address) await connect();
+      let activeSigner = signer;
+      if (!address || !activeSigner) {
+        const connRes = await connect();
+        activeSigner = connRes.signer;
+      }
       setDeploying(true);
-      const res = await deployBallot(title, options);
+      const res = await deployBallot(title, options, activeSigner);
       setResult(res);
     } catch (e: any) {
       alert("Deployment failed: " + (e?.message || e));

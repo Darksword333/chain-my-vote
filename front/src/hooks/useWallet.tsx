@@ -2,16 +2,15 @@
 
 import React, { createContext, useContext, useCallback, useEffect, useState } from "react";
 import { ethers } from "ethers";
-import { CONTRACT_ADDRESS, CONTRACT_ABI } from "@/lib/contract";
+import compiled from "@/lib/compiled.json";
 
 interface WalletContextType {
   provider: ethers.BrowserProvider | null;
   signer: ethers.Signer | null;
   address: string | null;
-  contract: ethers.Contract | null;
   connect: () => Promise<any>;
   disconnect: () => void;
-  vote: (ballotId: number, choice: number) => Promise<any>;
+  vote: (contractAddress: string, choiceName: string) => Promise<any>;
   getBallots: () => Promise<any[]>;
 }
 
@@ -21,7 +20,6 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null);
   const [signer, setSigner] = useState<ethers.Signer | null>(null);
   const [address, setAddress] = useState<string | null>(null);
-  const [contract, setContract] = useState<ethers.Contract | null>(null);
 
   const initEthers = useCallback(async (ethProvider: any) => {
     try {
@@ -33,8 +31,6 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         const a = await s.getAddress();
         setSigner(s);
         setAddress(a);
-        const c = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, s);
-        setContract(c);
       }
     } catch (error) {
       console.error("Failed to initialize ethers", error);
@@ -56,7 +52,6 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
           setProvider(null);
           setSigner(null);
           setAddress(null);
-          setContract(null);
         } else {
           initEthers(eth);
         }
@@ -81,6 +76,35 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       if (!(window as any).ethereum) throw new Error("MetaMask not found");
       const eth = (window as any).ethereum;
       
+      // Ensure we are on Sepolia Testnet
+      const SEPOLIA_CHAIN_ID = "0xaa36a7";
+      const currentChainId = await eth.request({ method: "eth_chainId" });
+      if (currentChainId !== SEPOLIA_CHAIN_ID) {
+        try {
+          await eth.request({
+            method: "wallet_switchEthereumChain",
+            params: [{ chainId: SEPOLIA_CHAIN_ID }],
+          });
+        } catch (switchError: any) {
+          if (switchError.code === 4902) {
+            await eth.request({
+              method: "wallet_addEthereumChain",
+              params: [
+                {
+                  chainId: SEPOLIA_CHAIN_ID,
+                  chainName: "Sepolia test network",
+                  rpcUrls: ["https://rpc.sepolia.org"],
+                  nativeCurrency: { name: "Sepolia Ether", symbol: "ETH", decimals: 18 },
+                  blockExplorerUrls: ["https://sepolia.etherscan.io"],
+                },
+              ],
+            });
+          } else {
+            throw switchError;
+          }
+        }
+      }
+      
       // Force MetaMask to open the account selection dialog
       await eth.request({
         method: "wallet_requestPermissions",
@@ -95,9 +119,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       const p = new ethers.BrowserProvider(eth);
       const s = await p.getSigner();
       const a = await s.getAddress();
-      const c = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, s);
       
-      return { provider: p, signer: s, address: a, contract: c };
+      return { provider: p, signer: s, address: a };
     } catch (e) {
       console.error("connect error", e);
       throw e;
@@ -109,7 +132,6 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     setProvider(null);
     setSigner(null);
     setAddress(null);
-    setContract(null);
     // Reloading is still the safest way to ensure state is completely cleared on disconnect in Next.js
     try {
       window.location.reload();
@@ -117,24 +139,49 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const vote = useCallback(
-    async (ballotId: number, choice: number) => {
-      if (!contract) throw new Error("Contract not connected");
-      const tx = await contract.vote(ballotId, choice);
+    async (contractAddress: string, choiceName: string) => {
+      if (!signer) throw new Error("Wallet not connected");
+      const contract = new ethers.Contract(contractAddress, compiled.abi, signer);
+      const tx = await contract.vote(ethers.encodeBytes32String(choiceName));
       return tx;
     },
-    [contract]
+    [signer]
   );
 
   const getBallots = useCallback(async () => {
-    if (!contract) return [];
+    if (!provider && !signer) return [];
+    const connection = signer || provider;
+    
     try {
-      const raw = await contract.getBallots();
-      return raw.map((b: any) => ({ id: Number(b.id), title: b.title, options: b.options }));
+      const ballotsStr = localStorage.getItem("deployedBallots");
+      if (!ballotsStr) return [];
+      const ballots = JSON.parse(ballotsStr);
+
+      const results = await Promise.all(
+        ballots.map(async (b: any) => {
+          try {
+            const contract = new ethers.Contract(b.address, compiled.abi, connection);
+            const [names, counts] = await contract.getAllResults();
+            
+            return {
+              id: b.address, // Use address as ID
+              title: b.title,
+              options: names.map((n: string) => ethers.decodeBytes32String(n)),
+              voteCounts: counts.map((c: any) => Number(c)),
+            };
+          } catch (e) {
+            console.warn("Failed to fetch ballot", b.address, e);
+            return null;
+          }
+        })
+      );
+
+      return results.filter((r) => r !== null);
     } catch (e) {
-      console.warn("getBallots failed", e);
+      console.error("getBallots failed", e);
       return [];
     }
-  }, [contract]);
+  }, [provider, signer]);
 
   return (
     <WalletContext.Provider
@@ -142,7 +189,6 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         provider,
         signer,
         address,
-        contract,
         connect,
         disconnect,
         vote,

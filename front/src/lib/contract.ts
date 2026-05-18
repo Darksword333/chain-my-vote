@@ -21,7 +21,8 @@ export const CONTRACT_ABI = [
         "components": [
           { "internalType": "uint256", "name": "id", "type": "uint256" },
           { "internalType": "string", "name": "title", "type": "string" },
-          { "internalType": "string[]", "name": "options", "type": "string[]" }
+          { "internalType": "string[]", "name": "options", "type": "string[]" },
+          { "internalType": "uint256[]", "name": "voteCounts", "type": "uint256[]" }
         ],
         "internalType": "struct Ballot[]",
         "name": "",

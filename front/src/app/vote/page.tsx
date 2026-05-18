@@ -25,9 +25,9 @@ export default function VotePage() {
     };
   }, [getBallots]);
 
-  const handleVote = async (ballotId: number, optionIndex: number) => {
+  const handleVote = async (contractAddress: string, choiceName: string) => {
     try {
-      await vote(ballotId, optionIndex);
+      await vote(contractAddress, choiceName);
       alert("Vote submitted (transaction sent). Check your wallet for confirmation.");
     } catch (e) {
       alert("Failed to submit vote: " + (e as any).message);
@@ -51,7 +51,7 @@ export default function VotePage() {
               <h2 className="font-semibold text-lg">{b.title}</h2>
               <div className="mt-2 flex gap-2">
                 {b.options.map((opt: string, idx: number) => (
-                  <Button key={idx} onClick={() => handleVote(b.id, idx)}>
+                  <Button key={idx} onClick={() => handleVote(b.id, opt)}>
                     {opt}
                   </Button>
                 ))}
