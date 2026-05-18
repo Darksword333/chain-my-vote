@@ -6,10 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Upload, Users } from "lucide-react";
 import { useDeployer } from "@/hooks/useDeployer";
 import { useWallet } from "@/hooks/useWallet";
 import WalletStatus from "@/components/ui/wallet-status";
+import { Textarea } from "@/components/ui/textarea";
 
 export default function OrganizePage() {
   const { address, connect, signer } = useWallet();
@@ -17,6 +18,7 @@ export default function OrganizePage() {
 
   const [title, setTitle] = useState("");
   const [options, setOptions] = useState<string[]>(["Option 1", "Option 2"]);
+  const [whitelistInput, setWhitelistInput] = useState("");
   const [deploying, setDeploying] = useState(false);
   const [result, setResult] = useState<any>(null);
 
@@ -24,8 +26,30 @@ export default function OrganizePage() {
   const updateOption = (i: number, v: string) => setOptions((s) => s.map((x, idx) => (idx === i ? v : x)));
   const removeOption = (i: number) => setOptions((s) => s.filter((_, idx) => idx !== i));
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      setWhitelistInput(text);
+    };
+    reader.readAsText(file);
+  };
+
   const handleDeploy = async () => {
     if (!title || options.length < 2) return alert("Provide a title and at least two options.");
+    
+    // Process whitelist
+    const authorizedVoters = whitelistInput
+      .split(/\r?\n/)
+      .map(addr => addr.trim())
+      .filter(addr => addr.startsWith("0x") && addr.length === 42);
+
+    if (authorizedVoters.length === 0) {
+      return alert("Please provide at least one valid authorized wallet address.");
+    }
+
     try {
       let activeSigner = signer;
       if (!address || !activeSigner) {
@@ -33,7 +57,7 @@ export default function OrganizePage() {
         activeSigner = connRes.signer;
       }
       setDeploying(true);
-      const res = await deployBallot(title, options, activeSigner);
+      const res = await deployBallot(title, options, authorizedVoters, activeSigner);
       setResult(res);
     } catch (e: any) {
       alert("Deployment failed: " + (e?.message || e));
@@ -63,7 +87,38 @@ export default function OrganizePage() {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium mb-1">Ballot Title</label>
-              <Input value={title} onChange={(e: any) => setTitle(e.target.value)} />
+              <Input value={title} onChange={(e: any) => setTitle(e.target.value)} placeholder="e.g. Best Framework 2024" />
+            </div>
+
+            <div className="pt-4 border-t border-border/50">
+              <div className="flex items-center justify-between mb-3">
+                <label className="text-sm font-medium flex items-center gap-2">
+                  <Users className="size-4 text-emerald-500" />
+                  Authorized Voters (Whitelist)
+                </label>
+                <div className="relative">
+                  <input
+                    type="file"
+                    accept=".txt"
+                    onChange={handleFileUpload}
+                    className="absolute inset-0 opacity-0 cursor-pointer"
+                    id="file-upload"
+                  />
+                  <Button variant="outline" size="sm" className="gap-2 pointer-events-none">
+                    <Upload className="size-4" />
+                    Upload .txt
+                  </Button>
+                </div>
+              </div>
+              <Textarea 
+                placeholder="Paste addresses here (0x...), one per line" 
+                value={whitelistInput}
+                onChange={(e) => setWhitelistInput(e.target.value)}
+                className="min-h-[120px] font-mono text-xs"
+              />
+              <p className="text-[10px] text-muted-foreground mt-2">
+                Only these addresses will be allowed to vote in this contract.
+              </p>
             </div>
 
             <div>

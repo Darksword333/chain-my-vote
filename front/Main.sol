@@ -19,11 +19,14 @@ contract Main {
     Choice[] public choices;
     uint public totalVotes;
 
+    // Whitelist
+    mapping(address => bool) public whitelist;
+
     // Map adress to voter struct
     mapping(address => Voter) public voters;
 
     // Class constructor
-    constructor(bytes32[] memory choiceNames) {
+    constructor(bytes32[] memory choiceNames, address[] memory authorizedVoters) {
         organizer = msg.sender;
 
         // Add all initial choices
@@ -33,10 +36,17 @@ contract Main {
                 count: 0
             }));
         }
+
+        // Add adress to whitelist
+        for (uint i = 0; i < authorizedVoters.length; i++) {
+            whitelist[authorizedVoters[i]] = true;
+        }
     }
 
     // Vote for a choice
     function vote(bytes32 choiceName) external {
+        require(whitelist[msg.sender], "You are not authorized to vote!");
+        
         Voter storage sender = voters[msg.sender];
         require(!sender.voted, "Already voted!");
 

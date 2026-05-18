@@ -9,7 +9,7 @@ export function useDeployer() {
   const { signer } = useWallet();
 
   const deployBallot = useCallback(
-    async (title: string, options: string[], providedSigner?: ethers.Signer | null) => {
+    async (title: string, options: string[], authorizedVoters: string[], providedSigner?: ethers.Signer | null) => {
       const activeSigner = providedSigner || signer;
       if (!activeSigner) throw new Error("No signer available. Connect your wallet first.");
 
@@ -19,8 +19,8 @@ export function useDeployer() {
         // Encode options to bytes32
         const encodedOptions = options.map(opt => ethers.encodeBytes32String(opt));
         
-        // Constructor accepts bytes32[] memory choiceNames
-        const contract = await factory.deploy(encodedOptions);
+        // Constructor accepts bytes32[] memory choiceNames, address[] memory authorizedVoters
+        const contract = await factory.deploy(encodedOptions, authorizedVoters);
         await contract.waitForDeployment();
         const tx = contract.deploymentTransaction();
         const address = await contract.getAddress();
