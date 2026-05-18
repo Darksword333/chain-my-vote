@@ -21,7 +21,8 @@ export function useDeployer() {
           // Assumes the vote contract constructor accepts (string title, string[] options)
           const contract = await factory.deploy(title, options);
           await contract.waitForDeployment();
-          return { address: contract.target, txHash: contract.receipt?.transactionHash || null };
+          const tx = contract.deploymentTransaction();
+          return { address: contract.target, txHash: tx?.hash || null };
         } catch (e) {
           console.error("deploy failed", e);
           throw e;
