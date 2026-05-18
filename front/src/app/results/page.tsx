@@ -177,7 +177,8 @@ export default function ResultsPage() {
                           </Pie>
                           <Tooltip 
                             formatter={(value: any, name: any) => [`${value} votes`, name]}
-                            contentStyle={{ borderRadius: '8px', border: '1px solid hsl(var(--border))', backgroundColor: 'hsl(var(--card))', color: 'hsl(var(--foreground))' }}
+                            contentStyle={{ borderRadius: '8px', border: '1px solid hsl(var(--border))', backgroundColor: '#1f2937', color: '#fff' }}
+                            itemStyle={{ color: '#fff' }}
                           />
                         </PieChart>
                       </ResponsiveContainer>
@@ -195,11 +196,12 @@ export default function ResultsPage() {
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={chartData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-                        <XAxis dataKey="name" tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} tickLine={false} axisLine={false} />
-                        <YAxis tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} tickLine={false} axisLine={false} allowDecimals={false} />
+                        <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#fff' }} tickLine={false} axisLine={false} />
+                        <YAxis tick={{ fontSize: 12, fill: '#fff' }} tickLine={false} axisLine={false} allowDecimals={false} />
                         <Tooltip 
-                          cursor={{ fill: 'hsl(var(--muted))' }}
-                          contentStyle={{ borderRadius: '8px', border: '1px solid hsl(var(--border))', backgroundColor: 'hsl(var(--card))', color: 'hsl(var(--foreground))' }}
+                          cursor={{ fill: 'rgba(255, 255, 255, 0.1)' }}
+                          contentStyle={{ borderRadius: '8px', border: '1px solid hsl(var(--border))', backgroundColor: '#1f2937', color: '#fff' }}
+                          itemStyle={{ color: '#fff' }}
                         />
                         <Bar dataKey="votes" radius={[4, 4, 0, 0]}>
                           {chartData.map((entry: any, index: number) => (

@@ -42,7 +42,7 @@ const SidebarContent = ({ pathname, setIsOpen }: SidebarContentProps) => (
   <div className="flex flex-col h-full py-4">
     <div className="flex items-center gap-3 px-2 mb-8">
       <div className="size-8 bg-primary rounded flex items-center justify-center font-bold text-primary-foreground select-none">
-        N
+        FV
       </div>
       <span className="font-bold text-xl tracking-tight text-foreground select-none">
         Chain My Vote

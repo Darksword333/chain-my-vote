@@ -1,10 +1,10 @@
-# Nexus
+# Chain My Vote
 
 ## Overview
 
-Nexus is a Next.js + TypeScript frontend that provides a prompt/chat UI intended for generative AI interactions, and can be packaged as a lightweight native desktop application using Tauri. The repository contains the web UI in `src/` and the Tauri native wrapper in `src-tauri/`.
+Chain My Vote is a Next.js + TypeScript frontend that provides a prompt/chat UI intended for generative AI interactions, and can be packaged as a lightweight native desktop application using Tauri. The repository contains the web UI in `src/` and the Tauri native wrapper in `src-tauri/`.
 
-The primary objective of Nexus is to act as an extensible "brain": an AI-driven system connected to a graph database that models knowledge, ingests new information, and can trigger automated workflows and actions. Think of it as a combination of a generative AI chat interface plus a graph-backed knowledge store and a workflow executor (similar in spirit to tools like n8n but driven by a graph-based AI "brain").
+The primary objective of Chain My Vote is to act as an extensible "brain": an AI-driven system connected to a graph database that models knowledge, ingests new information, and can trigger automated workflows and actions. Think of it as a combination of a generative AI chat interface plus a graph-backed knowledge store and a workflow executor (similar in spirit to tools like n8n but driven by a graph-based AI "brain").
 
 This README gives a concise description, developer quickstart, and a checklist for publishing the project publicly on GitHub.
 

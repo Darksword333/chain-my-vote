@@ -19,7 +19,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "NEXUS | Intelligent OS",
+  title: "Chain My Vote",
   description: "Personal operating system by Shawn Franceus",
 };
 
