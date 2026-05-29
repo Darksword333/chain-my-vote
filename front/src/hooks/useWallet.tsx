@@ -141,9 +141,36 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const vote = useCallback(
     async (contractAddress: string, choiceName: string) => {
       if (!signer) throw new Error("Wallet not connected");
-      const contract = new ethers.Contract(contractAddress, compiled.abi, signer);
-      const tx = await contract.vote(ethers.encodeBytes32String(choiceName));
-      return tx;
+      
+      try {
+        // Option 1: Gasless via Alchemy Account Abstraction
+        const { getSmartAccountClient } = await import("@/lib/alchemy");
+        const { client } = await getSmartAccountClient((window as any).ethereum);
+        
+        const contract = new ethers.Contract(contractAddress, compiled.abi, signer);
+        const data = contract.interface.encodeFunctionData("vote", [ethers.encodeBytes32String(choiceName)]);
+        
+        // Envoyer le UserOperation via Alchemy Gas Manager
+        const userOpResponse = await client.sendUserOperation({
+          uo: {
+            target: contractAddress as `0x${string}`,
+            data: data as `0x${string}`,
+          },
+        });
+        
+        console.log("UserOperation Hash: ", userOpResponse.hash);
+        
+        // Wait for the transaction to be mined
+        const txHash = await client.waitForUserOperationTransaction({ hash: userOpResponse.hash });
+        return txHash;
+
+      } catch (e: any) {
+        console.warn("Alchemy AA failed, fallback to normal tx:", e);
+        // Fallback si la configuration Alchemy n'est pas complète ou échoue
+        const contract = new ethers.Contract(contractAddress, compiled.abi, signer);
+        const tx = await contract.vote(ethers.encodeBytes32String(choiceName));
+        return tx;
+      }
     },
     [signer]
   );

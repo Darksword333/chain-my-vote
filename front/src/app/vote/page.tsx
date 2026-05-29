@@ -28,7 +28,7 @@ export default function VotePage() {
   const handleVote = async (contractAddress: string, choiceName: string) => {
     try {
       await vote(contractAddress, choiceName);
-      alert("Vote submitted (transaction sent). Check your wallet for confirmation.");
+      alert("Vote submitted (transaction sent via Alchemy). Check your wallet for confirmation.");
     } catch (e) {
       alert("Failed to submit vote: " + (e as any).message);
     }
