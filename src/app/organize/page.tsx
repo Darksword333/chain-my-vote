@@ -4,9 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Upload, Users, Clock } from "lucide-react";
+import { Plus, Trash2, Upload, Users, Clock, Flame } from "lucide-react";
 import { useDeployer } from "@/hooks/useDeployer";
 import { useWallet } from "@/hooks/useWallet";
 import { Textarea } from "@/components/ui/textarea";
@@ -51,14 +51,13 @@ export default function OrganizePage() {
     const deadlineTimestamp = Math.floor(new Date(deadline).getTime() / 1000);
     if (deadlineTimestamp <= Math.floor(Date.now() / 1000)) return alert("Deadline must be in the future.");
 
-    // Process whitelist (ID numbers)
-    const idNumbers = whitelistInput
+    const addresses = whitelistInput
       .split(/\r?\n/)
-      .map(id => id.trim())
-      .filter(id => id.length > 0 && /^\d+$/.test(id)); // Allow only numeric strings
+      .map(addr => addr.trim())
+      .filter(addr => addr.length > 0 && /^0x[a-fA-F0-9]{40}$/.test(addr));
 
-    if (idNumbers.length === 0) {
-      return alert("Please provide at least one valid ID number (numeric).");
+    if (addresses.length === 0) {
+      return alert("Please provide at least one valid Ethereum address (0x...).");
     }
 
     try {
@@ -68,7 +67,7 @@ export default function OrganizePage() {
         activeSigner = connRes.signer;
       }
       setDeploying(true);
-      const res = await deployBallot(title, options, idNumbers, deadlineTimestamp, fundingAmount, activeSigner);
+      const res = await deployBallot(title, options, addresses, deadlineTimestamp, fundingAmount, activeSigner);
       setResult(res);
     } catch (e: unknown) {
       const error = e as Error;
@@ -79,64 +78,75 @@ export default function OrganizePage() {
   };
 
   const colorClasses = [
-    "bg-amber-500/10 text-amber-500 border-amber-500/20",
-    "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
-    "bg-sky-500/10 text-sky-500 border-sky-500/20",
-    "bg-violet-500/10 text-violet-500 border-violet-500/20",
+    "bg-amber-500/5 hover:bg-amber-500/10 text-amber-500 border-amber-500/20",
+    "bg-emerald-500/5 hover:bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
+    "bg-sky-500/5 hover:bg-sky-500/10 text-sky-500 border-sky-500/20",
+    "bg-violet-500/5 hover:bg-violet-500/10 text-violet-500 border-violet-500/20",
   ];
 
   return (
-    <div className="max-w-4xl mx-auto p-8">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold">Organize a Vote</h1>
+    <div className="max-w-4xl mx-auto p-6 lg:p-8 space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-extrabold tracking-tight">Organize an Election</h1>
+          <p className="text-muted-foreground mt-1 text-sm">Set up a new ballot and sponsor voting gas fees.</p>
+        </div>
+        <Button variant="ghost" asChild>
+          <Link href="/">Back</Link>
+        </Button>
       </div>
 
-      <Card>
+      <Card className="border-border shadow-sm">
         <CardHeader>
-          <CardTitle>New Ballot</CardTitle>
+          <CardTitle className="text-xl">Ballot Details</CardTitle>
+          <CardDescription>Fill in the configuration details of your ballot contract.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Ballot Title</label>
-              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Best Framework 2024" />
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Ballot Title</label>
+                <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g., Best Framework 2026" className="bg-background/50" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
+                  <Clock className="size-4 text-sky-500" />
+                  Voting Deadline
+                </label>
+                <Input 
+                  type="datetime-local" 
+                  value={deadline} 
+                  onChange={(e) => setDeadline(e.target.value)} 
+                  className="bg-background/50"
+                />
+              </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1 flex items-center gap-2">
-                <Clock className="size-4 text-sky-500" />
-                Voting Deadline
+              <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
+                <Flame className="size-4 text-amber-500 animate-pulse" />
+                Gas Sponsorship Funding (ETH)
               </label>
-              <Input 
-                type="datetime-local" 
-                value={deadline} 
-                onChange={(e) => setDeadline(e.target.value)} 
-              />
-              <p className="text-[10px] text-muted-foreground mt-1">
-                The date and time when the vote will be closed.
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">Gas Sponsorship Funding (ETH)</label>
               <Input 
                 type="number" 
                 step="0.005"
                 min="0.001"
                 value={fundingAmount} 
                 onChange={(e) => setFundingAmount(e.target.value)} 
-                placeholder="e.g. 0.02" 
+                placeholder="e.g., 0.02" 
+                className="bg-background/50"
               />
-              <p className="text-[10px] text-muted-foreground mt-1">
-                This amount of ETH is deposited into the contract to fund voters' gas fees via Gelato Relay. Recommended: 0.02 ETH or more.
+              <p className="text-[10px] text-muted-foreground mt-1.5 leading-relaxed">
+                This amount of ETH is deposited into the contract to sponsor your voters' transactions via Gelato. Recommended: 0.02 ETH.
               </p>
             </div>
 
-            <div className="pt-4 border-t border-border/50">
+            <div className="pt-6 border-t border-border">
               <div className="flex items-center justify-between mb-3">
-                <label className="text-sm font-medium flex items-center gap-2">
+                <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                   <Users className="size-4 text-emerald-500" />
-                  Authorized ID Cards (ZKP Merkle Tree)
+                  Whitelisted Wallet Addresses
                 </label>
                 <div className="relative">
                   <input
@@ -146,66 +156,76 @@ export default function OrganizePage() {
                     className="absolute inset-0 opacity-0 cursor-pointer"
                     id="file-upload"
                   />
-                  <Button variant="outline" size="sm" className="gap-2 pointer-events-none">
+                  <Button variant="outline" size="sm" className="gap-2 hover:bg-accent cursor-pointer">
                     <Upload className="size-4" />
                     Upload .txt
                   </Button>
                 </div>
               </div>
               <Textarea 
-                placeholder="Paste 8-digit ID numbers here, one per line (e.g., 12345678)" 
+                placeholder="Paste Ethereum wallet addresses here, one per line (e.g., 0x90F8bf325439F455c40a5585aa0Bbc6FAD22822B)" 
                 value={whitelistInput}
                 onChange={(e) => setWhitelistInput(e.target.value)}
-                className="min-h-[120px] font-mono text-xs"
+                className="min-h-[120px] font-mono text-xs bg-background/30 focus-visible:ring-1 focus-visible:ring-emerald-500"
               />
-              <p className="text-[10px] text-muted-foreground mt-2">
-                These numeric IDs will be hashed into a Merkle Tree. Voters will use their exact ID to generate an anonymous Zero-Knowledge proof locally.
+              <p className="text-[10px] text-muted-foreground mt-1.5 leading-relaxed">
+                Provide the exact EVM wallet addresses of the voters. Only these wallets will be whitelisted on-chain.
               </p>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-3">Options</label>
+            <div className="pt-6 border-t border-border">
+              <label className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">Election Options</label>
               <div className="grid grid-cols-1 gap-3">
                 {options.map((opt, idx) => (
-                  <div key={idx} className={`flex items-center justify-between gap-3 p-3 border rounded-2xl ${colorClasses[idx % colorClasses.length]}`}>
-                    <div className="flex items-center gap-3">
-                      <Badge variant="outline">{idx + 1}</Badge>
-                      <div className="px-4 py-2 rounded-full bg-transparent">
-                        <Input
-                          value={opt}
-                          onChange={(e) => updateOption(idx, e.target.value)}
-                          className="bg-transparent border-0 p-0 text-white placeholder:text-white/60 focus-visible:ring-0 focus-visible:border-transparent outline-none shadow-none rounded-full"
-                        />
-                      </div>
+                  <div key={idx} className={`flex items-center justify-between gap-3 p-3 border rounded-xl transition-all duration-200 ${colorClasses[idx % colorClasses.length]}`}>
+                    <div className="flex items-center gap-3 flex-1">
+                      <Badge variant="outline" className="font-mono">{idx + 1}</Badge>
+                      <Input
+                        value={opt}
+                        onChange={(e) => updateOption(idx, e.target.value)}
+                        className="bg-transparent border-0 p-0 text-foreground placeholder:text-muted-foreground/50 focus-visible:ring-0 focus-visible:border-transparent outline-none shadow-none h-auto py-1"
+                      />
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline" size="icon" onClick={() => removeOption(idx)} disabled={options.length <= 2} aria-label={`Remove option ${idx + 1}`} className="rounded-full">
-                        <Trash2 />
-                      </Button>
-                    </div>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => removeOption(idx)} 
+                      disabled={options.length <= 2} 
+                      aria-label={`Remove option ${idx + 1}`}
+                      className="rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                    >
+                      <Trash2 className="size-4" />
+                    </Button>
                   </div>
                 ))}
               </div>
 
-              <div className="mt-3">
-                <Button onClick={addOption} variant="ghost">
-                  <Plus />
-                  Add option
+              <div className="mt-4">
+                <Button onClick={addOption} variant="ghost" size="sm" className="gap-1.5">
+                  <Plus className="size-4" />
+                  Add Option
                 </Button>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
-              <Button onClick={handleDeploy} disabled={deploying}>
-                {deploying ? "Deploying..." : "Deploy Vote Contract"}
+            <div className="flex items-center gap-3 pt-4">
+              <Button onClick={handleDeploy} disabled={deploying} className="shadow-sm">
+                {deploying ? "Deploying..." : "Deploy Ballot Contract"}
               </Button>
-              <Link href="/" className="text-sm text-muted-foreground">Cancel</Link>
+              <Button variant="ghost" asChild>
+                <Link href="/">Cancel</Link>
+              </Button>
             </div>
 
             {result && (
-              <div className="p-4 border rounded">
-                <div>Deployed address: <span className="font-mono">{result.address}</span>{result.mocked ? " (mocked)" : ""}</div>
-                {result.txHash && <div>Tx: <a href={`https://sepolia.etherscan.io/tx/${result.txHash}`} target="_blank" rel="noreferrer">{result.txHash}</a></div>}
+              <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-xl space-y-2 mt-4">
+                <div className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Ballot Deployed Successfully!</div>
+                <div className="text-xs">Contract Address: <span className="font-mono text-foreground break-all">{result.address}</span></div>
+                {result.txHash && (
+                  <div className="text-xs">
+                    Transaction: <a href={`https://sepolia.etherscan.io/tx/${result.txHash}`} target="_blank" rel="noreferrer" className="text-primary hover:underline font-mono break-all">{result.txHash}</a>
+                  </div>
+                )}
               </div>
             )}
           </div>

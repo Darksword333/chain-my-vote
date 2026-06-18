@@ -4,8 +4,6 @@ import { useCallback } from "react";
 import { ContractFactory, encodeBytes32String, parseEther, type Signer } from "ethers";
 import { useWallet } from "@/hooks/useWallet";
 import compiled from "@/lib/compiled.json";
-import verifierCompiled from "@/lib/verifier_compiled.json";
-import { createMerkleTree } from "@/lib/zkp";
 
 interface DeployedBallot {
   address: string;
@@ -19,7 +17,7 @@ export function useDeployer() {
     async (
       title: string,
       options: string[],
-      idNumbers: string[],
+      whitelistAddresses: string[],
       deadline: number,
       fundingAmount: string = "0.02",
       providedSigner?: Signer | null
@@ -28,22 +26,7 @@ export function useDeployer() {
       if (!activeSigner) throw new Error("No signer available. Connect your wallet first.");
 
       try {
-        // Generate Merkle Tree from ID numbers
-        const tree = await createMerkleTree(idNumbers);
-        const merkleRoot = tree.root;
-
-        // Generate external nullifier randomly for this ballot
-        // Random 31-byte integer to avoid field overflow
-        const externalNullifier = BigInt("0x" + Array.from(crypto.getRandomValues(new Uint8Array(31)))
-          .map(b => b.toString(16).padStart(2, '0')).join(''));
-
-        // 1. Deploy the Verifier contract
-        const verifierFactory = new ContractFactory(verifierCompiled.abi, verifierCompiled.bytecode, activeSigner);
-        const verifierContract = await verifierFactory.deploy();
-        await verifierContract.waitForDeployment();
-        const verifierAddress = await verifierContract.getAddress();
-
-        // 2. Deploy the Main voting contract
+        // 1. Deploy the Main voting contract directly
         const mainFactory = new ContractFactory(compiled.abi, compiled.bytecode, activeSigner);
         
         // Encode options to bytes32
@@ -52,15 +35,16 @@ export function useDeployer() {
         // Gelato Relay address on Sepolia
         const GELATO_RELAY = "0xd822d6828859157C76F43743F0638573d5603fe6";
         
-        // Constructor: choiceNames, trustedForwarder_, _votingDeadline, _merkleRoot, _externalNullifier, _verifierAddress
+        // Constructor: choiceNames, trustedForwarder_, _votingDeadline, whitelist_
         const contract = await mainFactory.deploy(
           encodedOptions, 
           GELATO_RELAY, 
           deadline, 
-          merkleRoot.toString(), 
-          externalNullifier.toString(), 
-          verifierAddress,
-          { value: parseEther(fundingAmount || "0.02") }
+          whitelistAddresses,
+          { 
+            value: parseEther(fundingAmount || "0.02"),
+            gasLimit: 1500000
+          }
         );
         await contract.waitForDeployment();
         const tx = contract.deploymentTransaction();
@@ -79,15 +63,13 @@ export function useDeployer() {
         existing.push({ address, title });
         localStorage.setItem("deployedBallots", JSON.stringify(existing));
 
-        // Save the externalNullifier and the ID tree locally for demonstration (or real usage)
-        const ballotsZkDataStr = localStorage.getItem("ballotsZkData") || "{}";
-        const ballotsZkData = JSON.parse(ballotsZkDataStr);
-        ballotsZkData[address] = {
-            externalNullifier: externalNullifier.toString(),
-            merkleRoot: merkleRoot.toString(),
-            idNumbers // In a real scenario, we don't save plaintext IDs here, but for this demo it allows generating proofs later
+        // Save the whitelist configuration locally
+        const ballotsDataStr = localStorage.getItem("ballotsData") || "{}";
+        const ballotsData = JSON.parse(ballotsDataStr);
+        ballotsData[address] = {
+            whitelist: whitelistAddresses
         };
-        localStorage.setItem("ballotsZkData", JSON.stringify(ballotsZkData));
+        localStorage.setItem("ballotsData", JSON.stringify(ballotsData));
 
         return { address, txHash: tx?.hash || null };
       } catch (e) {

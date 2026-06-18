@@ -7,7 +7,9 @@
     "build": "next build",
     "serve": "npx serve@latest out",
     "start": "npm run build && npm run serve",
-    "lint": "eslint"
+    "lint": "eslint",
+    "compile": "node scripts/compile.js",
+    "estimate-gas": "node scripts/estimateGas.mjs"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

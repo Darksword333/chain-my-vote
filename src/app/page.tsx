@@ -3,10 +3,9 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import WalletStatus from "@/components/ui/wallet-status";
 import { Button } from "@/components/ui/button";
-import { Wallet, CheckSquare, ShieldCheck, Activity, Users } from "lucide-react";
+import { Wallet, CheckSquare, ShieldCheck, Activity, Users, ArrowRight } from "lucide-react";
 import { useWallet } from "@/hooks/useWallet";
 
 export default function Home() {
@@ -36,42 +35,42 @@ export default function Home() {
   }, [getBallots, isConnected]);
 
   return (
-    <div className="max-w-6xl mx-auto space-y-4 h-full flex flex-col p-8">
+    <div className="max-w-6xl mx-auto space-y-6 h-full flex flex-col p-6 lg:p-8 animate-fade-in">
       <header className="flex flex-row items-center justify-between">
         <div>
-          <h1 className="text-foreground text-4xl font-bold tracking-tight">
+          <h1 className="text-foreground text-4xl font-extrabold tracking-tight bg-gradient-to-r from-foreground to-foreground/75 bg-clip-text">
             Chain My Vote
           </h1>
-          <p className="text-muted-foreground mt-2">
-            Secure & Anonymous Elections
+          <p className="text-muted-foreground mt-1 text-sm sm:text-base">
+            Secure, decentralized & sponsored wallet-signature elections.
           </p>
         </div>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4">
         {/* Network state */}
-        <Card>
+        <Card className="transition-all duration-300 hover:shadow-md hover:border-primary/20">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Blockchain Network
             </CardTitle>
-            <Activity className="size-4 text-blue-500" />
+            <Activity className="size-5 text-indigo-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">Sepolia Testnet</div>
             <p className="text-xs text-muted-foreground mt-1">
-              {isConnected ? "Connected and ready" : "Waiting for the crypto wallet"}
+              {isConnected ? "Connected and ready" : "Waiting for wallet connection"}
             </p>
           </CardContent>
         </Card>
 
         {/* Active Ballots */}
-        <Card>
+        <Card className="transition-all duration-300 hover:shadow-md hover:border-primary/20">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-foreground">
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Active Elections
             </CardTitle>
-            <CheckSquare className="size-4 text-emerald-500" />
+            <CheckSquare className="size-5 text-emerald-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -79,7 +78,7 @@ export default function Home() {
             </div>
             {isConnected ? (
                <p className="text-xs text-muted-foreground mt-1">
-                 Ballots available on-chain
+                 Ballots active on-chain
                </p>
             ) : (
               <p className="text-xs text-muted-foreground mt-1">
@@ -90,10 +89,12 @@ export default function Home() {
         </Card>
 
         {/* Total Votes */}
-        <Card>
+        <Card className="transition-all duration-300 hover:shadow-md hover:border-primary/20">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Votes Cast</CardTitle>
-            <Users className="size-4 text-amber-500" />
+            <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Total Votes Cast
+            </CardTitle>
+            <Users className="size-5 text-amber-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -101,42 +102,47 @@ export default function Home() {
             </div>
             {isConnected ? (
               <p className="text-xs text-muted-foreground mt-1">
-                Anonymized via Zero-Knowledge
+                Verified cryptographically
               </p>
             ) : (
                <p className="text-xs text-muted-foreground mt-1">
-                 Data hidden until connected
+                 Connect wallet to view results
                </p>
             )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Status */}
-      <div className="rounded-xl border border-dashed border-border bg-card/50 p-12 text-center mt-8 flex flex-col items-center justify-center">
+      {/* Main Action Box */}
+      <div className="rounded-2xl border border-border bg-card/40 backdrop-blur-sm p-8 sm:p-12 text-center mt-6 flex flex-col items-center justify-center transition-all duration-300 hover:border-border-hover shadow-sm">
         {!isConnected ? (
           <>
-            <Wallet className="size-12 text-muted-foreground mb-4" />
-            <h2 className="text-xl font-semibold mb-2">
-              Authentication required
+            <div className="p-4 rounded-full bg-primary/10 mb-5 text-primary">
+              <Wallet className="size-8" />
+            </div>
+            <h2 className="text-2xl font-bold mb-2 tracking-tight">
+              Authentication Required
             </h2>
-            <p className="text-muted-foreground mb-6 max-w-md">
-              To ensure the secrecy of your vote and prevent double voting, please link your crypto wallet. Your ID will be requested at the time of voting to generate your ZK proof.
+            <p className="text-muted-foreground mb-6 max-w-md text-sm sm:text-base leading-relaxed">
+              To verify your voter eligibility and guarantee one vote per person, please link your crypto wallet. Votes are signed securely and transaction costs are sponsored.
             </p>
-            <WalletStatus />
+            <WalletStatus className="scale-105" />
           </>
         ) : (
           <>
-            <ShieldCheck className="size-12 text-primary mb-4" />
-            <h2 className="text-xl font-semibold mb-2">
-              The ballot box is open
+            <div className="p-4 rounded-full bg-emerald-500/10 mb-5 text-emerald-500">
+              <ShieldCheck className="size-8 animate-pulse" />
+            </div>
+            <h2 className="text-2xl font-bold mb-2 tracking-tight">
+              Ready to Participate
             </h2>
-            <p className="text-muted-foreground mb-6">
-              Your wallet is connected. You can now cast your vote anonymously using your ID card. Gas fees are sponsored.
+            <p className="text-muted-foreground mb-6 max-w-md text-sm sm:text-base leading-relaxed">
+              Your wallet is connected. You can cast your vote in whitelisted ballots or organize a new election. All transaction fees are covered.
             </p>
-            <div className="flex gap-4">
-              <Button size="lg" onClick={() => router.push("/vote")}>
+            <div className="flex flex-wrap gap-4 justify-center">
+              <Button size="lg" onClick={() => router.push("/vote")} className="gap-2">
                 Vote Now
+                <ArrowRight className="size-4" />
               </Button>
               <Button size="lg" variant="outline" onClick={() => router.push("/organize")}>
                 Organize an Election
