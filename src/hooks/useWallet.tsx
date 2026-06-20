@@ -13,6 +13,7 @@ import {
   type Signer
 } from "ethers";
 import compiled from "@/lib/compiled.json";
+import { getGlobalBallots } from "@/lib/db";
 
 interface BallotResult {
   id: string;
@@ -29,6 +30,7 @@ interface WalletContextType {
   disconnect: () => void;
   vote: (contractAddress: string, choiceName: string) => Promise<{ taskId: string }>;
   getBallots: () => Promise<BallotResult[]>;
+  getBallot: (contractAddress: string) => Promise<BallotResult>;
 }
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined);
@@ -232,16 +234,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     const connection = signer || provider;
     
     try {
-      const ballotsStr = localStorage.getItem("deployedBallots");
-      if (!ballotsStr || ballotsStr === "undefined") return [];
-      
-      let ballots;
-      try {
-        ballots = JSON.parse(ballotsStr) as { address: string; title: string }[];
-      } catch {
-        console.error("Failed to parse deployedBallots from localStorage", ballotsStr.slice(0, 100));
-        return [];
-      }
+      const ballots = await getGlobalBallots();
 
       const results = await Promise.all(
         ballots.map(async (b) => {
@@ -270,6 +263,37 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     }
   }, [provider, signer]);
 
+  const getBallot = useCallback(async (contractAddress: string) => {
+    if (!provider && !signer) throw new Error("Wallet not connected!");
+    const connection = signer || provider;
+
+    try {
+      // Find ballot title in global registry
+      const ballots = await getGlobalBallots();
+      let title = "Unknown Ballot";
+      const match = ballots.find(
+        (b) => b.address.toLowerCase() === contractAddress.toLowerCase()
+      );
+      if (match) {
+        title = match.title;
+      }
+
+      const contract = new Contract(contractAddress, compiled.abi, connection);
+      const rawResults = await contract.getAllResults();
+      const [names, counts] = rawResults as [string[], bigint[]];
+
+      return {
+        id: contractAddress,
+        title: title,
+        options: names.map((n: string) => decodeBytes32String(n)),
+        voteCounts: counts.map((c) => Number(c)),
+      };
+    } catch (e) {
+      console.error(`getBallot failed for address ${contractAddress}:`, e);
+      throw e;
+    }
+  }, [provider, signer]);
+
   return (
     <WalletContext.Provider
       value={{
@@ -280,6 +304,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
         disconnect,
         vote,
         getBallots,
+        getBallot,
       }}
     >
       {children}

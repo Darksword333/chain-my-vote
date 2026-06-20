@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Trash2, Upload, Users, Clock, Flame } from "lucide-react";
+import { Plus, Trash2, Upload, Users, Clock, Flame, ArrowRight } from "lucide-react";
 import { useDeployer } from "@/hooks/useDeployer";
 import { useWallet } from "@/hooks/useWallet";
 import { Textarea } from "@/components/ui/textarea";
@@ -218,7 +218,7 @@ export default function OrganizePage() {
             </div>
 
             {result && (
-              <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-xl space-y-2 mt-4">
+              <div className="p-4 bg-emerald-500/5 border border-emerald-500/20 rounded-xl space-y-3 mt-4">
                 <div className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Ballot Deployed Successfully!</div>
                 <div className="text-xs">Contract Address: <span className="font-mono text-foreground break-all">{result.address}</span></div>
                 {result.txHash && (
@@ -226,6 +226,14 @@ export default function OrganizePage() {
                     Transaction: <a href={`https://sepolia.etherscan.io/tx/${result.txHash}`} target="_blank" rel="noreferrer" className="text-primary hover:underline font-mono break-all">{result.txHash}</a>
                   </div>
                 )}
+                <div className="pt-1">
+                  <Button asChild size="sm" className="bg-emerald-600 hover:bg-emerald-500 text-white gap-1.5 shadow-sm">
+                    <Link href={`/vote/${result.address}`}>
+                      Go to Voting Booth
+                      <ArrowRight className="size-3.5" />
+                    </Link>
+                  </Button>
+                </div>
               </div>
             )}
           </div>

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Trash2, Plus, Globe, Settings2 } from "lucide-react";
+import { getGlobalBallots, saveGlobalBallot, deleteGlobalBallot } from "@/lib/db";
 
 export default function SettingsPage() {
   const { address, disconnect } = useWallet();
@@ -15,32 +16,28 @@ export default function SettingsPage() {
   const [newTitle, setNewTitle] = useState("");
 
   useEffect(() => {
-    const loadBallots = () => {
-      const stored = localStorage.getItem("deployedBallots");
-      if (stored && stored !== "undefined") {
-        try {
-          setBallots(JSON.parse(stored));
-        } catch (e) {
-          console.error("Failed to parse deployedBallots from localStorage", e);
-        }
+    const loadBallots = async () => {
+      try {
+        const data = await getGlobalBallots();
+        setBallots(data);
+      } catch (e) {
+        console.error("Failed to load ballots from global database", e);
       }
     };
     loadBallots();
   }, []);
 
-  const saveBallots = (updated: { address: string; title: string }[]) => {
-    setBallots(updated);
-    localStorage.setItem("deployedBallots", JSON.stringify(updated));
-    // Trigger a storage event for other components (like Vote/Results) to update if needed
-    window.dispatchEvent(new Event("storage"));
+  const removeBallot = async (addr: string) => {
+    try {
+      const updated = await deleteGlobalBallot(addr);
+      setBallots(updated);
+    } catch (e) {
+      console.error("Failed to remove ballot", e);
+      alert("Failed to remove ballot.");
+    }
   };
 
-  const removeBallot = (addr: string) => {
-    const filtered = ballots.filter((b) => b.address.toLowerCase() !== addr.toLowerCase());
-    saveBallots(filtered);
-  };
-
-  const addBallot = () => {
+  const addBallot = async () => {
     if (!newAddr.startsWith("0x") || newAddr.length !== 42) {
       return alert("Please enter a valid contract address.");
     }
@@ -53,10 +50,15 @@ export default function SettingsPage() {
       return alert("This contract is already in your list.");
     }
 
-    const updated = [...ballots, { address: newAddr, title: newTitle }];
-    saveBallots(updated);
-    setNewAddr("");
-    setNewTitle("");
+    try {
+      const updated = await saveGlobalBallot(newAddr, newTitle);
+      setBallots(updated);
+      setNewAddr("");
+      setNewTitle("");
+    } catch (e) {
+      console.error("Failed to add ballot", e);
+      alert("Failed to add ballot.");
+    }
   };
 
   return (

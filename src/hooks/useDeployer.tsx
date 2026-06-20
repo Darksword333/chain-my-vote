@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import { ContractFactory, encodeBytes32String, parseEther, type Signer } from "ethers";
 import { useWallet } from "@/hooks/useWallet";
 import compiled from "@/lib/compiled.json";
+import { saveGlobalBallot } from "@/lib/db";
 
 interface DeployedBallot {
   address: string;
@@ -50,18 +51,12 @@ export function useDeployer() {
         const tx = contract.deploymentTransaction();
         const address = await contract.getAddress();
 
-        // Save to localStorage so we can list it later
-        const existingStr = localStorage.getItem("deployedBallots");
-        let existing: DeployedBallot[] = [];
-        if (existingStr && existingStr !== "undefined") {
-          try {
-            existing = JSON.parse(existingStr) as DeployedBallot[];
-          } catch (e) {
-            console.error("Failed to parse deployedBallots from localStorage", e);
-          }
+        // Save to global database via API
+        try {
+          await saveGlobalBallot(address, title);
+        } catch (apiErr) {
+          console.error("Failed to save deployed ballot to database API:", apiErr);
         }
-        existing.push({ address, title });
-        localStorage.setItem("deployedBallots", JSON.stringify(existing));
 
         // Save the whitelist configuration locally
         const ballotsDataStr = localStorage.getItem("ballotsData") || "{}";
