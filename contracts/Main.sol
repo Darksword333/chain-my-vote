@@ -1,12 +1,21 @@
 // SPDX-License-Identifier: GPL-3.0
+
 pragma solidity >=0.7.0 <0.9.0;
 
+import "./Verifier.sol";
+
+/**
+ * @title Main
+ * @dev Voting management with automatic relay payment (Gelato SyncFee)
+ * and Zero-Knowledge Proof based authorization (Semaphore).
+ */
 abstract contract Context {
     function _msgSender() internal view virtual returns (address) {
         return msg.sender;
     }
 }
 
+// Interface to pay Gelato
 interface IGelatoRelay {
     function feeCollector() external view returns (address);
 }
@@ -14,42 +23,49 @@ interface IGelatoRelay {
 contract Main is Context {
     address public organizer;
     address private _trustedForwarder;
-    uint256 public votingDeadline;
+    uint public votingDeadline;
 
-    address public constant GELATO_RELAY = 0xd822d6828859157C76F43743F0638573d5603fe6;
+    // Official Gelato Relay address for payment (checksum correct)
+    address public constant GELATO_RELAY = 0xd822d6828859157C76F43743F0638573d5603fe6; // Sepolia Example
 
     struct Choice {
         bytes32 name;
-        uint256 count;
+        uint count;
     }
 
     Choice[] public choices;
-    uint256 public totalVotes;
+    uint public totalVotes;
 
-    mapping(address => bool) public whitelist;
-    mapping(address => bool) public hasVoted;
+    // ZKP State
+    uint256 public merkleRoot;
+    uint256 public externalNullifier;
+    mapping(uint256 => bool) public nullifierHashes;
+    Groth16Verifier public verifier;
 
-    event GasPaid(address indexed relay, uint256 amount);
+    // Event to track gas payment
+    event GasPaid(address relay, uint amount);
 
     constructor(
         bytes32[] memory choiceNames, 
         address trustedForwarder_, 
-        uint256 _votingDeadline,
-        address[] memory whitelist_
+        uint _votingDeadline,
+        uint256 _merkleRoot,
+        uint256 _externalNullifier,
+        address _verifierAddress
     ) payable {
         organizer = msg.sender;
         _trustedForwarder = trustedForwarder_;
         votingDeadline = _votingDeadline;
+        merkleRoot = _merkleRoot;
+        externalNullifier = _externalNullifier;
+        verifier = Groth16Verifier(_verifierAddress);
 
-        for (uint256 i = 0; i < choiceNames.length; i++) {
+        for (uint i = 0; i < choiceNames.length; i++) {
             choices.push(Choice({name: choiceNames[i], count: 0}));
-        }
-
-        for (uint256 i = 0; i < whitelist_.length; i++) {
-            whitelist[whitelist_[i]] = true;
         }
     }
 
+    // Receive more ETH if needed
     receive() external payable {}
 
     function isTrustedForwarder(address forwarder) public view virtual returns (bool) {
@@ -66,118 +82,100 @@ contract Main is Context {
         }
     }
 
+    // Modifier to pay Gelato at the end of the vote
     modifier payGelato() {
-        _;
+        _; // Execute the vote first
 
+        // If it comes from the forwarder, pay the Gelato collector
         if (isTrustedForwarder(msg.sender)) {
-            (uint256 fee, ) = _getGelatoFeeDetails();
-            require(address(this).balance >= fee, "Insufficient sponsored gas funds");
+            uint fee;
+            address feeToken;
 
+            (fee, feeToken) = _getGelatoFeeDetails();
+
+            require(address(this).balance >= fee, "Not enough ETH in the contract!");
+
+            // Pay the collector
             address collector = IGelatoRelay(GELATO_RELAY).feeCollector();
             (bool success, ) = payable(collector).call{value: fee}("");
-            require(success, "Gelato fee payment failed");
+            require(success, "Gelato payment failed");
 
             emit GasPaid(collector, fee);
         }
     }
 
-    /**
-     * @dev Extracts the fee details appended by the Gelato SyncFee forwarder.
-     * Gelato appends exactly 84 bytes at the end of the calldata.
-     */
-    function _getGelatoFeeDetails() internal view returns (uint256 fee, address feeToken) {
+    // Internal function to extract fees from calldata (specific to Gelato SyncFee)
+    function _getGelatoFeeDetails() internal view returns (uint fee, address feeToken) {
         assembly {
             let size := calldatasize()
-            fee := calldataload(sub(size, 84))
-            feeToken := calldataload(sub(size, 52))
+            fee := calldataload(sub(size, 84)) // 20 (user) + 32 (token) + 32 (fee)
+            feeToken := calldataload(sub(size, 52)) // 20 (user) + 32 (token)
         }
     }
 
-    function getMessageHash(bytes32 choiceName) public view returns (bytes32) {
-        return keccak256(abi.encodePacked(choiceName, address(this)));
-    }
-
-    function getEthSignedMessageHash(bytes32 messageHash) public pure returns (bytes32) {
-        return keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash));
-    }
-
-    function recoverSigner(bytes32 ethSignedMessageHash, bytes memory signature) public pure returns (address) {
-        if (signature.length != 65) {
-            return address(0);
-        }
-
-        bytes32 r;
-        bytes32 s;
-        uint8 v;
-
-        assembly {
-            r := mload(add(signature, 32))
-            s := mload(add(signature, 64))
-            v := byte(0, mload(add(signature, 96)))
-        }
-
-        if (v < 27) {
-            v += 27;
-        }
-
-        if (v != 27 && v != 28) {
-            return address(0);
-        }
-
-        return ecrecover(ethSignedMessageHash, v, r, s);
-    }
-
-    function vote(bytes32 choiceName, bytes calldata signature) external payGelato {
-        require(block.timestamp <= votingDeadline, "Voting period has ended");
-
-        bytes32 messageHash = getMessageHash(choiceName);
-        bytes32 ethSignedMessageHash = getEthSignedMessageHash(messageHash);
-        address voter = recoverSigner(ethSignedMessageHash, signature);
-
-        require(voter != address(0), "Signature recovery failed");
-        require(whitelist[voter], "Voter address not whitelisted");
-        require(!hasVoted[voter], "Voter has already cast a vote");
+    // Vote function with auto payment and ZK proof verification
+    function voteZK(
+        bytes32 choiceName,
+        uint256 nullifierHash,
+        uint256 root,
+        uint[2] calldata a,
+        uint[2][2] calldata b,
+        uint[2] calldata c
+    ) external payGelato {
+        require(block.timestamp <= votingDeadline, "Voting has ended!");
+        require(root == merkleRoot, "Invalid Merkle root");
+        require(!nullifierHashes[nullifierHash], "Already voted!");
 
         bool choiceFound = false;
-        uint256 choiceIndex = 0;
-        for (uint256 i = 0; i < choices.length; i++) {
+        uint choiceIndex = 0;
+        for (uint i = 0; i < choices.length; i++) {
             if (choices[i].name == choiceName) {
                 choiceFound = true;
                 choiceIndex = i;
                 break;
             }
         }
-        require(choiceFound, "Invalid vote choice option");
+        require(choiceFound, "Choice does not exist!");
 
-        hasVoted[voter] = true;
+        // Derive signalHash consistently with the frontend
+        uint256 signalHash = uint256(keccak256(abi.encodePacked(choiceName))) >> 8;
+
+        // Build public inputs: [root, nullifierHash, signalHash, externalNullifier]
+        uint[4] memory input = [root, nullifierHash, signalHash, externalNullifier];
+        
+        // Verify ZK Proof
+        require(verifier.verifyProof(a, b, c, input), "Invalid ZK proof");
+
+        nullifierHashes[nullifierHash] = true;
         choices[choiceIndex].count++;
         totalVotes++;
     }
 
+    // For the organizer to withdraw the surplus at the end
     function withdraw() external {
-        require(msg.sender == organizer, "Unauthorized withdrawal request");
+        require(msg.sender == organizer, "Only the organizer can withdraw!");
         (bool success, ) = payable(organizer).call{value: address(this).balance}("");
-        require(success, "Funds withdrawal failed");
+        require(success, "Withdrawal failed");
     }
 
     function winners() public view returns (bytes32[] memory winnerNames_) {
-        uint256 maxVotes = 0;
-        uint256 winnerCount = 0;
+        uint winnerCount = 0;
+        uint numWinners = 0;
 
-        for (uint256 p = 0; p < choices.length; p++) {
-            if (choices[p].count > maxVotes) {
-                maxVotes = choices[p].count;
-                winnerCount = 1;
-            } else if (choices[p].count == maxVotes && maxVotes > 0) {
-                winnerCount++;
+        for (uint p = 0; p < choices.length; p++) {
+            if (choices[p].count > winnerCount) {
+                winnerCount = choices[p].count;
+                numWinners = 1;
+            } else if (choices[p].count == winnerCount && winnerCount > 0) {
+                numWinners++;
             }
         }
 
-        winnerNames_ = new bytes32[](winnerCount);
-        uint256 index = 0;
-        if (maxVotes > 0) {
-            for (uint256 p = 0; p < choices.length; p++) {
-                if (choices[p].count == maxVotes) {
+        winnerNames_ = new bytes32[](numWinners);
+        uint index = 0;
+        if (winnerCount > 0) {
+            for (uint p = 0; p < choices.length; p++) {
+                if (choices[p].count == winnerCount) {
                     winnerNames_[index] = choices[p].name;
                     index++;
                 }
@@ -189,10 +187,10 @@ contract Main is Context {
         return winners().length > 1;
     }
 
-    function getAllResults() public view returns (bytes32[] memory, uint256[] memory) {
+    function getAllResults() public view returns (bytes32[] memory, uint[] memory) {
         bytes32[] memory names = new bytes32[](choices.length);
-        uint256[] memory counts = new uint256[](choices.length);
-        for (uint256 i = 0; i < choices.length; i++) {
+        uint[] memory counts = new uint[](choices.length);
+        for (uint i = 0; i < choices.length; i++) {
             names[i] = choices[i].name;
             counts[i] = choices[i].count;
         }

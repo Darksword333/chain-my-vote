@@ -51,13 +51,13 @@ export default function OrganizePage() {
     const deadlineTimestamp = Math.floor(new Date(deadline).getTime() / 1000);
     if (deadlineTimestamp <= Math.floor(Date.now() / 1000)) return alert("Deadline must be in the future.");
 
-    const addresses = whitelistInput
+    const secrets = whitelistInput
       .split(/\r?\n/)
-      .map(addr => addr.trim())
-      .filter(addr => addr.length > 0 && /^0x[a-fA-F0-9]{40}$/.test(addr));
+      .map(s => s.trim())
+      .filter(s => s.length > 0 && /^\d+$/.test(s));
 
-    if (addresses.length === 0) {
-      return alert("Please provide at least one valid Ethereum address (0x...).");
+    if (secrets.length === 0) {
+      return alert("Veuillez fournir au moins un code secret valide (uniquement des chiffres, ex: 12345678).");
     }
 
     try {
@@ -67,7 +67,7 @@ export default function OrganizePage() {
         activeSigner = connRes.signer;
       }
       setDeploying(true);
-      const res = await deployBallot(title, options, addresses, deadlineTimestamp, fundingAmount, activeSigner);
+      const res = await deployBallot(title, options, secrets, deadlineTimestamp, fundingAmount, activeSigner);
       setResult(res);
     } catch (e: unknown) {
       const error = e as Error;
@@ -146,7 +146,7 @@ export default function OrganizePage() {
               <div className="flex items-center justify-between mb-3">
                 <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
                   <Users className="size-4 text-emerald-500" />
-                  Whitelisted Wallet Addresses
+                  Codes Secrets des Votants (ZKP Merkle Tree)
                 </label>
                 <div className="relative">
                   <input
@@ -163,13 +163,13 @@ export default function OrganizePage() {
                 </div>
               </div>
               <Textarea 
-                placeholder="Paste Ethereum wallet addresses here, one per line (e.g., 0x90F8bf325439F455c40a5585aa0Bbc6FAD22822B)" 
+                placeholder="Saisissez les codes secrets numériques des électeurs autorisés, un par ligne (ex: 12345678)" 
                 value={whitelistInput}
                 onChange={(e) => setWhitelistInput(e.target.value)}
                 className="min-h-[120px] font-mono text-xs bg-background/30 focus-visible:ring-1 focus-visible:ring-emerald-500"
               />
               <p className="text-[10px] text-muted-foreground mt-1.5 leading-relaxed">
-                Provide the exact EVM wallet addresses of the voters. Only these wallets will be whitelisted on-chain.
+                Fournissez des codes numériques (ex: identifiants uniques à 8 chiffres). Ils seront hachés localement dans l'arbre de Merkle ZKP. Conservez ces codes confidentiellement pour les transmettre à vos votants.
               </p>
             </div>
 

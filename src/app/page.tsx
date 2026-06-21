@@ -42,7 +42,7 @@ export default function Home() {
             Chain My Vote
           </h1>
           <p className="text-muted-foreground mt-1 text-sm sm:text-base">
-            Secure, decentralized & sponsored wallet-signature elections.
+            Élections décentralisées sécurisées par preuves Zero-Knowledge (ZKP) et entièrement sponsorisées.
           </p>
         </div>
       </header>
@@ -102,7 +102,7 @@ export default function Home() {
             </div>
             {isConnected ? (
               <p className="text-xs text-muted-foreground mt-1">
-                Verified cryptographically
+                Anonymisés par Zero-Knowledge (ZKP)
               </p>
             ) : (
                <p className="text-xs text-muted-foreground mt-1">
@@ -124,7 +124,7 @@ export default function Home() {
               Authentication Required
             </h2>
             <p className="text-muted-foreground mb-6 max-w-md text-sm sm:text-base leading-relaxed">
-              To verify your voter eligibility and guarantee one vote per person, please link your crypto wallet. Votes are signed securely and transaction costs are sponsored.
+              Pour vérifier votre éligibilité tout en garantissant l'anonymat de votre vote et la résistance au double-vote, veuillez connecter votre portefeuille. Les frais de gaz sont entièrement pris en charge.
             </p>
             <WalletStatus className="scale-105" />
           </>
@@ -137,7 +137,7 @@ export default function Home() {
               Ready to Participate
             </h2>
             <p className="text-muted-foreground mb-6 max-w-md text-sm sm:text-base leading-relaxed">
-              Your wallet is connected. You can cast your vote in whitelisted ballots or organize a new election. All transaction fees are covered.
+              Votre portefeuille est connecté. Vous pouvez voter anonymement dans les scrutins autorisés via des preuves ZKP locales, ou organiser une nouvelle élection. Tous les frais sont sponsorisés.
             </p>
             <div className="flex flex-wrap gap-4 justify-center">
               <Button size="lg" onClick={() => router.push("/vote")} className="gap-2">

@@ -58,7 +58,7 @@ export default function BallotDiscoveryPage() {
             Elections Hub
           </h1>
           <p className="text-muted-foreground text-sm max-w-2xl leading-relaxed">
-            Discover active cryptographic ballots deployed on Sepolia. Select an election to enter its voting booth, verify your eligibility, and submit your signature.
+            Discover active cryptographic ballots deployed on Sepolia. Select an election to enter its voting booth, verify your eligibility using a Zero-Knowledge Proof, and vote anonymously.
           </p>
         </div>
         <div className="flex gap-3 shrink-0">
@@ -129,7 +129,7 @@ export default function BallotDiscoveryPage() {
               
               <CardContent className="pt-0 space-y-4">
                 <p className="text-xs text-muted-foreground/80 leading-relaxed">
-                  Cryptographic voting ballot deployed on Sepolia network. Contains on-chain whitelisted voters list.
+                  Ballot de vote cryptographique ZKP déployé sur Sepolia. Garantit l'anonymat complet.
                 </p>
                 
                 <div className="flex items-center justify-between pt-2 border-t border-border/45">
@@ -167,7 +167,7 @@ export default function BallotDiscoveryPage() {
         <div className="space-y-1">
           <span className="font-semibold text-foreground block">How it works</span>
           <p>
-            When you enter a voting booth, the application connects directly to the smart contract on the Sepolia network. Whitelisted voters will be prompted to sign their choice using their private key. The cryptographic signature is sent to Gelato Relay, which pays the gas cost and writes the vote to the blockchain.
+            When you enter a voting booth, you will be prompted to enter your secret voter code. The application will generate a Zero-Knowledge Proof (ZKP) locally in your browser. This proof validates that you are on the whitelisted Merkle tree without revealing your identity or your secret code. The proof is then submitted via Gelato Relay, which executes the transaction gaslessly.
           </p>
         </div>
       </div>

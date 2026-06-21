@@ -1,95 +1,103 @@
-# Chain My Vote - Vote Sécurisé par Signature de Wallet (Sans Carte d'Identité)
+# Chain My Vote - Système de Vote Décentralisé Sécurisé par ZKP et Signature de Wallet
 
-Chain My Vote est une application de vote décentralisée et sécurisée. Cette version a été simplifiée pour supprimer la vérification par carte d'identité / preuves Zero-Knowledge (ZKP), permettant aux électeurs de s'authentifier directement et de signer leur choix à l'aide de leur wallet de manière simplifiée et sécurisée, tout en conservant le sponsoring des frais de gaz (Paymaster via Gelato Relay).
-
-## Fonctionnalités Clés
-
-1. **Pas de Carte d'Identité** : Plus besoin de saisir des numéros d'identification de 8 chiffres.
-2. **Whitelist par Adresses de Wallet** : Le créateur du vote fournit directement les adresses Ethereum (`0x...`) des votants autorisés lors de la création.
-3. **Signature par Wallet** : Les votants signent cryptographiquement leur choix de vote directement via leur wallet (ex. MetaMask). Le contrat intelligent vérifie la signature à la volée.
-4. **Sponsoring du Gaz (Paymaster)** : Le contrat intelligent rembourse le relais Gelato (`Gelato Relay SyncFee`) en utilisant des fonds déposés lors de la création. Le votant ne paie pas de gaz pour voter !
+**Chain My Vote** est une solution moderne de vote décentralisé conçue pour offrir un maximum de sécurité, de confidentialité et d'accessibilité. En combinant les preuves à divulgation nulle de connaissance (Zero-Knowledge Proofs - ZKP) avec des signatures cryptographiques de portefeuilles (ECDSA / EIP-191), le système garantit l'anonymat des électeurs, l'intégrité des résultats et la validation de l'éligibilité de manière totalement décentralisée. De plus, l'intégration de Gelato Relay (Paymaster) permet un vote entièrement "gasless" pour l'utilisateur final.
 
 ---
 
-## Prérequis
+## 🚀 Fonctionnalités Clés
 
-Assurez-vous d'avoir installé :
-- **Node.js** (v20 ou plus récent recommandé)
-- **npm** (inclus avec Node.js)
-- **Extension de Wallet (ex: MetaMask)** configurée sur votre navigateur.
+1. **🔒 Confidentialité & Preuves ZKP (Zero-Knowledge Proofs)**
+   Garantit la validation sécurisée de l'éligibilité des votants tout en préservant l'anonymat. L'utilisation de preuves à divulgation nulle de connaissance permet de certifier le droit de vote sans lier l'identité publique de l'électeur à son bulletin.
+
+2. **📝 Signature Cryptographique EIP-191**
+   Les électeurs s'authentifient et valident leur choix en signant un message cryptographique sécurisé directement via leur portefeuille (ex. MetaMask). Le contrat intelligent (`Main.sol`) vérifie la validité de cette signature à la volée.
+
+3. **🛡️ Résistance aux Attaques par Rejeu**
+   Chaque hash de message de vote est lié de manière unique à l'adresse du contrat intelligent du scrutin en cours (`address(this)`), empêchant toute réutilisation ou double-vote d'une signature sur d'autres scrutins.
+
+4. **⛽ Vote Gasless (Sponsoring via Gelato Relay)**
+   Le contrat intelligent utilise le modèle de relais Gelato SyncFee. L'organisateur approvisionne le contrat en ETH lors de sa création, et le contrat prend en charge les frais d'exécution de la transaction de vote pour le compte de l'électeur.
+
+5. **📋 Whitelist sur la Blockchain**
+   Les adresses des portefeuilles autorisés sont déclarées lors de la création de l'élection et stockées de manière sécurisée dans le contrat pour vérifier l'éligibilité en temps réel.
 
 ---
 
-## Installation et Préparation
+## 🛠️ Prérequis
 
-1. **Installez les dépendances du projet** :
+Assurez-vous de disposer des éléments suivants :
+- **Node.js** (v20+ recommandé)
+- **npm** (ou gestionnaire de paquets équivalent)
+- Un portefeuille web3 compatible (ex. **MetaMask**) configuré dans votre navigateur.
+
+---
+
+## 🔧 Installation et Configuration
+
+1. **Installation des dépendances** :
    ```bash
    npm install
    ```
 
-2. **Compilez le smart contract mis à jour** :
-   Le script `compile.js` compile `Main.sol` et génère les fichiers d'ABI/bytecode dans `src/lib/compiled.json` pour le frontend.
+2. **Compilation du Smart Contract** :
+   Le script de compilation compile le contrat `Main.sol` et exporte automatiquement l'ABI et le bytecode mis à jour pour le frontend :
    ```bash
    node compile.js
    ```
 
-3. **(Optionnel) Estimez les coûts en gaz** :
-   Estimez les frais de déploiement et de vote pour la nouvelle structure par signature :
+3. **Évaluation des Coûts de Gaz** :
+   Pour estimer précisément les coûts de déploiement et de transaction avec le protocole de signature cryptographique :
    ```bash
    node estimateGas.mjs
    ```
 
 ---
 
-## Lancer le Projet
+## 💻 Démarrage de l'Application
 
-Démarrez le serveur de développement Next.js :
+Lancez le serveur de développement local :
 ```bash
 npm run dev
 ```
-
-Ouvrez ensuite [http://localhost:3000](http://localhost:3000) dans votre navigateur.
+L'application est alors accessible à l'adresse [http://localhost:3000](http://localhost:3000).
 
 ---
 
-## Guide de Test Étape par Étape
+## 📖 Guide d'Utilisation et Tests
 
-Pour tester le projet localement et valider son bon fonctionnement :
-
-### Étape 1 : Se Connecter
-1. Ouvrez l'application à l'adresse [http://localhost:3000](http://localhost:3000).
+### Étape 1 : Connexion au Portefeuille
+1. Accédez à l'application sur [http://localhost:3000](http://localhost:3000).
 2. Cliquez sur **Connect MetaMask**.
-3. Assurez-vous d'être connecté au réseau de test **Sepolia** (l'application vous demandera automatiquement de changer si nécessaire).
-4. Prévoyez un peu d'ETH de test Sepolia sur le compte de l'organisateur pour déployer le contrat de vote et sponsoriser le gaz (0.02 ETH recommandé).
+3. L'application configurera automatiquement le réseau de test **Sepolia** (demande de changement si nécessaire).
+4. Assurez-vous d'avoir quelques fonds Sepolia ETH sur le compte organisateur pour le déploiement du contrat et le provisionnement du sponsoring de gaz (0.02 Sepolia ETH recommandé).
 
-### Étape 2 : Créer un Vote (Organisateur)
-1. Cliquez sur **Organize an Election** (ou allez sur `/organize`).
-2. Saisissez un titre (ex: "Choix du framework 2026").
-3. Sélectionnez une date limite de vote dans le futur.
-4. Indiquez le montant de sponsoring en ETH (ex: `0.02` ETH) qui sera envoyé dans le contrat pour payer le relais Gelato pour vos électeurs.
-5. Dans le champ **Whitelisted Wallet Addresses**, insérez la liste des adresses de wallet autorisées à voter (une par ligne). **N'oubliez pas d'inclure votre propre adresse MetaMask pour pouvoir voter et tester immédiatement !**
-6. Saisissez vos options de vote.
-7. Cliquez sur **Deploy Vote Contract**.
-8. Confirmez la transaction de déploiement dans MetaMask. Une fois déployé, l'adresse de votre contrat de vote s'affichera à l'écran.
+### Étape 2 : Création du Scrutin (Organisateur)
+1. Allez dans la section **Organize an Election** (ou accédez à `/organize`).
+2. Indiquez le titre de l'élection et la date limite.
+3. Définissez le montant en ETH à allouer pour le sponsoring de gaz des électeurs (ex: `0.02` ETH).
+4. Dans le champ **Whitelisted Wallet Addresses**, saisissez les adresses Ethereum autorisées à voter (une adresse par ligne). *Veillez à ajouter l'adresse de test que vous utilisez actuellement pour pouvoir valider le vote.*
+5. Ajoutez les options de vote.
+6. Cliquez sur **Deploy Vote Contract** et confirmez la transaction sur MetaMask.
 
-### Étape 3 : Voter (Électeur)
-1. Cliquez sur **Vote Now** sur la page d'accueil ou naviguez sur `/vote`.
-2. L'application listera automatiquement les scrutins actifs créés (stockés dans le stockage local pour la démonstration).
-3. Connectez-vous avec l'un des wallets ajoutés dans la whitelist.
-4. Cliquez sur l'option de votre choix.
-5. Votre wallet MetaMask vous demandera de signer un message cryptographique sécurisé (contenant le choix de vote et l'adresse du contrat pour éviter toute réutilisation). **Cette signature est gratuite et ne nécessite pas de gaz.**
-6. Une fois signée, la transaction sera soumise au relais Gelato qui exécutera le vote sur la blockchain en utilisant les fonds de sponsoring du contrat.
-7. Un message de succès s'affichera une fois le vote enregistré sur la blockchain.
+### Étape 3 : Vote (Électeur)
+1. Naviguez vers l'onglet **Vote Now** (ou accédez à `/vote`).
+2. Sélectionnez l'élection active dans la liste des scrutins disponibles.
+3. Connectez-vous avec un portefeuille figurant dans la liste autorisée.
+4. Sélectionnez l'option souhaitée.
+5. MetaMask affiche une invite de signature EIP-191 sécurisée et gratuite (sans aucun coût de gaz).
+6. Après validation de la signature, les données sont transmises au relais Gelato, qui exécute la transaction on-chain en débitant le dépôt de sponsoring du contrat.
+7. Un écran de confirmation indique la bonne validation du vote.
 
-### Étape 4 : Consulter les Résultats
-1. Naviguez sur `/results` pour consulter les statistiques de votes et les résultats en temps réel.
+### Étape 4 : Analyse des Résultats
+1. Consultez l'onglet **Results** (ou `/results`) pour afficher la progression en temps réel et les résultats finaux après expiration du scrutin.
 
 ---
 
-## Structure du Projet
+## 📁 Structure du Projet
 
-- `Main.sol` : Le contrat intelligent contenant la vérification de signature ECDSA (`recoverSigner`) et la logique de distribution Gelato.
-- `src/hooks/useDeployer.tsx` : Hook pour le déploiement direct du contrat de vote avec la whitelist d'adresses.
-- `src/hooks/useWallet.tsx` : Hook pour la gestion du wallet, la génération de la signature de message EIP-191 et la communication avec Gelato.
-- `src/app/organize/page.tsx` : Interface d'organisation mise à jour pour accepter les adresses Ethereum autorisées.
-- `src/app/vote/page.tsx` : Interface de vote épurée, sans saisie de carte d'identité.
+- `contracts/Main.sol` : Le contrat intelligent intégrant la vérification des signatures ECDSA (`recoverSigner`), le contrôle d'accès par whitelist et la distribution des frais via Gelato.
+- `src/hooks/useDeployer.tsx` : Hook React gérant le déploiement du contrat intelligent avec configuration de la whitelist.
+- `src/hooks/useWallet.tsx` : Hook React gérant la connexion au wallet, la génération de la signature de message EIP-191 et l'intégration du relais Gelato.
+- `src/app/organize/page.tsx` : Interface d'organisation permettant de définir les options du scrutin et la whitelist.
+- `src/app/vote/page.tsx` : Interface utilisateur intuitive dédiée au vote par signature cryptographique.
+- `src/app/results/page.tsx` : Interface de consultation des statistiques et résultats en temps réel.

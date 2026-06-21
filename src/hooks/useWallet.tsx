@@ -8,12 +8,12 @@ import {
   decodeBytes32String, 
   Interface,
   solidityPackedKeccak256,
-  getBytes,
   type Eip1193Provider,
   type Signer
 } from "ethers";
 import compiled from "@/lib/compiled.json";
 import { getGlobalBallots } from "@/lib/db";
+import { createMerkleTree } from "@/lib/zkp";
 
 interface BallotResult {
   id: string;
@@ -28,7 +28,7 @@ interface WalletContextType {
   address: string | null;
   connect: () => Promise<{ provider: BrowserProvider; signer: Signer; address: string }>;
   disconnect: () => void;
-  vote: (contractAddress: string, choiceName: string) => Promise<{ taskId: string }>;
+  vote: (contractAddress: string, choiceName: string, secret: string) => Promise<{ taskId: string }>;
   getBallots: () => Promise<BallotResult[]>;
   getBallot: (contractAddress: string) => Promise<BallotResult>;
 }
@@ -160,29 +160,80 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const vote = useCallback(
-    async (contractAddress: string, choiceName: string) => {
+    async (contractAddress: string, choiceName: string, secret: string) => {
       if (!signer || !address) throw new Error("Wallet not connected!");
 
-      // 1. Compute message hash exactly like the smart contract:
-      // keccak256(abi.encodePacked(choiceName, address(this)))
+      const snarkjs = (window as any).snarkjs;
+      if (!snarkjs) {
+        throw new Error("ZK Proof library not loaded yet.");
+      }
+
+      // Retrieve local ZK data (the tree configuration created by the organizer)
+      const ballotsZkDataStr = localStorage.getItem("ballotsZkData") || "{}";
+      const ballotsZkData = JSON.parse(ballotsZkDataStr);
+      const zkData = ballotsZkData[contractAddress];
+
+      if (!zkData) {
+        throw new Error("ZK Tree data not found for this ballot. Ensure you are using a ballot created with the ZK system.");
+      }
+
+      // Reconstruct the tree
+      const secrets = zkData.secrets as string[];
+      const secretIndex = secrets.indexOf(secret);
+      
+      if (secretIndex === -1) {
+        throw new Error("Your secret code is not authorized to vote in this ballot.");
+      }
+
+      const tree = await createMerkleTree(secrets);
+      const proofElements = tree.getProof(secretIndex);
+
+      // Compute signalHash exactly like the smart contract: uint256(keccak256(abi.encodePacked(choiceName))) >> 8
       const encodedChoice = encodeBytes32String(choiceName);
-      const messageHash = solidityPackedKeccak256(
-        ["bytes32", "address"],
-        [encodedChoice, contractAddress]
+      const keccakHash = solidityPackedKeccak256(["bytes32"], [encodedChoice]);
+      const signalHash = (BigInt(keccakHash) >> BigInt(8)).toString();
+
+      // Input for the circom circuit (the compiled circuit expects idCardNumber)
+      const circuitInput = {
+        idCardNumber: secret,
+        treePathIndices: proofElements.pathIndices,
+        treeSiblings: proofElements.siblings.map(s => s.toString()),
+        signalHash: signalHash,
+        externalNullifier: zkData.externalNullifier
+      };
+
+      console.log("Generating ZK Proof...", circuitInput);
+      
+      // Load wasm and zkey from public/zk/
+      const { proof, publicSignals } = await snarkjs.groth16.fullProve(
+          circuitInput, 
+          "/zk/circuit.wasm", 
+          "/zk/circuit_final.zkey"
       );
 
-      console.log("Signing choice payload with wallet...", { choiceName, messageHash });
+      console.log("Proof generated!", publicSignals);
       
-      // 2. Request signature of the binary message (EIP-191 personal_sign)
-      const signature = await signer.signMessage(getBytes(messageHash));
-      console.log("Signature generated:", signature);
+      const root = publicSignals[0];
+      const nullifierHash = publicSignals[1];
+
+      // Format proof for Solidity
+      const a = [proof.pi_a[0], proof.pi_a[1]];
+      const b = [
+        [proof.pi_b[0][1], proof.pi_b[0][0]],
+        [proof.pi_b[1][1], proof.pi_b[1][0]]
+      ];
+      const c = [proof.pi_c[0], proof.pi_c[1]];
 
       const contractInterface = new Interface(compiled.abi);
       
-      // Encode function data: vote(bytes32 choiceName, bytes signature)
-      const data = contractInterface.encodeFunctionData("vote", [
+      // function voteZK(bytes32 choiceName, uint256 nullifierHash, uint256 root, uint[2] calldata a, uint[2][2] calldata b, uint[2] calldata c)
+      const data = contractInterface.encodeFunctionData("voteZK", [
           encodedChoice,
-          signature
+          nullifierHash,
+          root,
+          a,
+          b,
+          c
       ]);
 
       try {
@@ -212,7 +263,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
           console.log("Vote sent via Gelato! Task ID:", result.taskId);
           return result as { taskId: string };
         } catch {
-          console.warn("Gelato Relay unavailable or failed. Falling back to direct transaction...");
+          console.warn("Gelato Relay unavailable. Falling back to direct transaction...");
           // Fallback to direct transaction
           const tx = await signer.sendTransaction({
             to: contractAddress,
